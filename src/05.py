@@ -9,13 +9,13 @@ def parse_input(input_txt: str):
     moves: list[tuple[int, int, int]] = []
 
     # parse drawing of the starting stacks of crates
-    drawing = [line[1:-1:4] for line in input_txt.splitlines() if line.startswith("[")]
+    drawing = [line[1::4] for line in input_txt.splitlines() if line.startswith("[")]
     for layer in reversed(drawing):
-        for i, crate in enumerate(layer):
+        for i, crate in enumerate(layer, start=1):
             if crate != " ":
-                if i + 1 not in stacks:
-                    stacks[i + 1] = []
-                stacks[i + 1].append(crate)
+                if i not in stacks:
+                    stacks[i] = []
+                stacks[i].append(crate)
 
     # parse rearrangement procedure
     for line in input_txt.splitlines():

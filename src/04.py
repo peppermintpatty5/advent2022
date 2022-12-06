@@ -1,34 +1,35 @@
 #!/usr/bin/env python3
 
+import re
 import sys
 
 
-def part1(input_txt: str) -> int:
-    count = 0
-    for line in input_txt.splitlines():
-        e1, e2 = line.split(",")
-        a, b = map(int, e1.split("-"))
-        c, d = map(int, e2.split("-"))
-        r1 = set(range(a, b + 1))
-        r2 = set(range(c, d + 1))
+def parse_input(input_txt: str):
+    range_pairs: list[tuple[range, range]] = []
 
-        if r1 <= r2 or r2 <= r1:
-            count += 1
-    return count
+    for line in input_txt.splitlines():
+        match = re.match(r"(\d+)-(\d+),(\d+)-(\d+)", line)
+        if match is not None:
+            a, b, c, d = tuple(int(x) for x in match.groups())
+            range_pairs.append((range(a, b + 1), range(c, d + 1)))
+
+    return range_pairs
+
+
+def part1(input_txt: str) -> int:
+    range_pairs = parse_input(input_txt)
+
+    return sum(
+        1
+        for r1, r2 in range_pairs
+        if all(x in r2 for x in r1) or all(x in r1 for x in r2)
+    )
 
 
 def part2(input_txt: str) -> int:
-    count = 0
-    for line in input_txt.splitlines():
-        e1, e2 = line.split(",")
-        a, b = map(int, e1.split("-"))
-        c, d = map(int, e2.split("-"))
-        r1 = set(range(a, b + 1))
-        r2 = set(range(c, d + 1))
+    range_pairs = parse_input(input_txt)
 
-        if r1 & r2:
-            count += 1
-    return count
+    return sum(1 for r1, r2 in range_pairs if any(x in r2 for x in r1))
 
 
 def main():
