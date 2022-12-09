@@ -3,86 +3,97 @@
 import sys
 
 
-def lol_mkdir(filesystem, cwd, name):
-    # print("lol_mkdir", filesystem, cwd, name)
-    curr = filesystem
-    for part in cwd:
-        curr = curr[part]
+class Directory:
+    def __init__(self, name: str, parent: "Directory | None") -> None:
+        self.name = name
+        self.parent = parent
+        self.subdirs: dict[str, "Directory"] = {}
+        self.files: dict[str, int] = {}
 
-    curr[name] = {}
+    def path(self) -> str:
+        """
+        Get the absolute path of the directory.
+        """
+        parts: list[str] = []
+
+        curr = self
+        while curr is not None:
+            parts.append(curr.name)
+            curr = curr.parent
+
+        return "/" + "/".join(parts)
+
+    def get_all_sizes(self) -> dict[str, int]:
+        """
+        Calculate the total size of all directories using tabulation.
+
+        Returns a dictionary that maps the path of each directory to its size.
+        """
+        sizes: dict[str, int] = {}
+        self._get_all_sizes(sizes)
+        return sizes
+
+    def _get_all_sizes(self, sizes: dict[str, int]) -> None:
+        """
+        Helper method that does the work for `get_all_sizes()`.
+        """
+        # get sizes of subdirectories first
+        for d in self.subdirs.values():
+            d._get_all_sizes(sizes)
+
+        sizes[self.path()] = sum(self.files.values()) + sum(
+            sizes[d.path()] for d in self.subdirs.values()
+        )
 
 
-def lol_creat(filesystem, cwd, name, size):
-    curr = filesystem
-    for part in cwd:
-        curr = curr[part]
-
-    curr[name] = size
-
-
-def dir_size(directory):
-    return sum(x if type(x) is int else dir_size(x) for x in directory.values())
-
-
-def part1(input_txt: str) -> int:
+def parse_input(input_txt: str) -> Directory:
+    """
+    Recreate directory structure from terminal output.
+    """
     lines = input_txt.splitlines()
-    cwd: list[str] = []
-    filesystem = {"/": {}}
-
-    all_dirs = [["/"]]
+    cwd = root = Directory("", None)
 
     i = 0
     while i < len(lines):
         line = lines[i]
         if line.startswith("$"):
             if line.startswith("$ cd"):
-                dir = line.split()[-1]
-                if dir == "..":
-                    cwd.pop()
+                name = line.split()[-1]
+                if name == "..":
+                    # cannot go higher than root directory
+                    cwd = cwd.parent or cwd
                 else:
-                    cwd.append(dir)
+                    cwd = root if name == "/" else cwd.subdirs[name]
             elif line.startswith("$ ls"):
                 while i + 1 < len(lines) and not lines[i + 1].startswith("$"):
                     i += 1
                     line = lines[i]
                     if line.startswith("dir"):
-                        name = line.split()[-1]
-                        lol_mkdir(filesystem, cwd, name)
-                        all_dirs.append(list(cwd) + [name])
+                        _, name = line.split()
+                        cwd.subdirs[name] = Directory(name, cwd)
                     else:
                         size, name = line.split()
-                        size = int(size)
-                        lol_creat(filesystem, cwd, name, size)
+                        cwd.files[name] = int(size)
         i += 1
 
-    dir_sizes = {}
-    ouch = 0
-    for dir in all_dirs:
-        curr = filesystem
-        for part in dir:
-            curr = curr[part]
+    return root
 
-        size = dir_size(curr)
-        # print(dir, size)
-        if size <= 100000:
-            ouch += size
-        dir_sizes[size] = dir
 
-    total = 70000000
-    used = dir_size(filesystem)
-    free = total - used
-    goal = 30000000 - free
+def part1(input_txt: str) -> int:
+    root = parse_input(input_txt)
+    sizes = root.get_all_sizes()
 
-    for s in sorted(dir_sizes):
-        if s > goal:
-            print(s, dir_sizes[s])
-            break
-
-    return ouch
+    return sum(size for size in sizes.values() if size <= 100000)
 
 
 def part2(input_txt: str) -> int:
-    ...
+    root = parse_input(input_txt)
+    sizes = root.get_all_sizes()
+
+    used = sizes[root.path()]
+    free = 70000000 - used
+
+    return min(size for size in sizes.values() if free + size >= 30000000)
 
 
 def main():
